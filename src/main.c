@@ -4,6 +4,8 @@
 #include "hardware/timer.h"
 #include "pellicanus.h"
 
+#define PIN_LED_SENSOR  0
+
 /* ------------------------------------------------------------------ */
 /*  Shared state updated by timers                                     */
 /* ------------------------------------------------------------------ */
@@ -51,32 +53,36 @@ int main(void)
     stdio_init_all();
     sleep_ms(2000);   /* wait for USB CDC enumeration */
 
+    gpio_init(PIN_LED_SENSOR);
+    gpio_set_dir(PIN_LED_SENSOR, GPIO_OUT);
+
+    for (int i = 0; i < 3; i++) {
+        gpio_put(PIN_LED_SENSOR, 0);
+        sleep_ms(200);
+        gpio_put(PIN_LED_SENSOR, 1);
+        sleep_ms(200);
+    }
+
     i2c1_init_bus();
     sl871_init();
 
-    if (!iam20680_init(IAM20680_ACCEL_FS_8G, IAM20680_GYRO_FS_500DPS))
-        printf("[ERROR] IAM-20680 not found\n");
-    else
-        printf("[OK] IAM-20680 initialised\n");
+    bool imu_ok  = iam20680_init(IAM20680_ACCEL_FS_8G, IAM20680_GYRO_FS_500DPS);
+    bool mag_ok  = mmc5983ma_init();
+    bool baro_ok = ms5637_init();
 
-    if (!mmc5983ma_init())
-        printf("[ERROR] MMC5983MA not found\n");
-    else
-        printf("[OK] MMC5983MA initialised\n");
-
-    if (!ms5637_init())
-        printf("[ERROR] MS5637 not found\n");
-    else
-        printf("[OK] MS5637 initialised\n");
-
+    printf(imu_ok  ? "[OK] IAM-20680 initialised\n"  : "[ERROR] IAM-20680 not found\n");
+    printf(mag_ok  ? "[OK] MMC5983MA initialised\n"  : "[ERROR] MMC5983MA not found\n");
+    printf(baro_ok ? "[OK] MS5637 initialised\n"     : "[ERROR] MS5637 not found\n");
     printf("[OK] SL-871 GNSS initialised\n");
+
+    gpio_put(PIN_LED_SENSOR, !(imu_ok && mag_ok && baro_ok));
 
     repeating_timer_t imu_timer, gnss_timer;
     /* Negative period → fire every |period| ms regardless of callback duration */
     add_repeating_timer_ms(-(1000 / PELLICANUS_IMU_HZ),  imu_timer_cb,  NULL, &imu_timer);
     add_repeating_timer_ms(-(1000 / PELLICANUS_GNSS_HZ), gnss_timer_cb, NULL, &gnss_timer);
 
-    printf("PELLICANUS ready — streaming at %d Hz IMU / %d Hz GNSS\n",
+    printf("PELLICANUS v2 ready — streaming at %d Hz IMU / %d Hz GNSS\n",
            PELLICANUS_IMU_HZ, PELLICANUS_GNSS_HZ);
 
     while (true) {
@@ -86,7 +92,7 @@ int main(void)
             mmc5983ma_read(&mag_data);
             ms5637_read(&baro_data);
 
-            printf("AX:%.4f AY:%.4f AZ:%.4f "
+            printf("PELLICANUS v2 AX:%.4f AY:%.4f AZ:%.4f "
                    "GX:%.4f GY:%.4f GZ:%.4f "
                    "MX:%.4f MY:%.4f MZ:%.4f "
                    "P:%.2f T:%.2f ALT:%.2f",

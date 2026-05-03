@@ -30,4 +30,4 @@ target_link_libraries(pellicanus
 pico_enable_stdio_usb(pellicanus 1)
 pico_enable_stdio_uart(pellicanus 0)
 
-pico_add_extra_outputs(pellicanus)
+# pico_add_extra_outputs(pellicanus)  -- requires picotool; use flash.ps1 instead
