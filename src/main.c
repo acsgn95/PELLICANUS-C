@@ -66,7 +66,7 @@ int main(void)
     i2c1_init_bus();
     sl871_init();
 
-    bool imu_ok  = iam20680_init(IAM20680_ACCEL_FS_8G, IAM20680_GYRO_FS_500DPS);
+    bool imu_ok  = iam20680_init(IAM20680_ACCEL_FS_2G, IAM20680_GYRO_FS_500DPS);
     bool mag_ok  = mmc5983ma_init();
     bool baro_ok = ms5637_init();
 

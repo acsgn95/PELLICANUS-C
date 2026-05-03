@@ -34,7 +34,7 @@
 
 /* CTRL2 bits – continuous mode */
 #define MMC5983MA_CTRL2_CMM_EN  (1 << 3)
-#define MMC5983MA_CTRL2_ODR_100HZ 0x07     /* 100 Hz ODR */
+#define MMC5983MA_CTRL2_ODR_100HZ 0x04     /* 100 Hz ODR */
 
 /* STATUS bits */
 #define MMC5983MA_STATUS_MEAS_M_DONE (1 << 0)

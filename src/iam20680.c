@@ -56,9 +56,13 @@ bool iam20680_init(iam20680_accel_fs_t accel_fs, iam20680_gyro_fs_t gyro_fs)
     if (spi_read_reg(IAM20680_REG_WHO_AM_I) != IAM20680_WHO_AM_I_VAL)
         return false;
 
+    /* Full device reset */
+    spi_write_reg(IAM20680_REG_PWR_MGMT_1, 0x80);
+    sleep_ms(100);
+
     /* Wake up, use best available clock */
     spi_write_reg(IAM20680_REG_PWR_MGMT_1, 0x01);
-    sleep_ms(10);
+    sleep_ms(50);
 
     spi_write_reg(IAM20680_REG_ACCEL_CONFIG,  (uint8_t)accel_fs);
     spi_write_reg(IAM20680_REG_GYRO_CONFIG,   (uint8_t)gyro_fs);
