@@ -91,32 +91,51 @@ bool iam20680_init(iam20680_accel_fs_t accel_fs, iam20680_gyro_fs_t gyro_fs)
     return true;
 }
 
-bool iam20680_read(iam20680_data_t *out)
+void iam20680_read_raw(iam20680_raw_t *raw)
 {
     /* Burst-read 14 bytes: ACCEL(6) + TEMP(2) + GYRO(6) */
-    uint8_t raw[14];
-    spi_read_burst(IAM20680_REG_ACCEL_XOUT_H, raw, 14);
+    uint8_t buf[14];
+    spi_read_burst(IAM20680_REG_ACCEL_XOUT_H, buf, 14);
+    for (int i = 0; i < 7; i++)
+        raw->v[i] = (int16_t)((buf[2 * i] << 8) | buf[2 * i + 1]);
+}
 
-    int16_t ax = (int16_t)((raw[0]  << 8) | raw[1]);
-    int16_t ay = (int16_t)((raw[2]  << 8) | raw[3]);
-    int16_t az = (int16_t)((raw[4]  << 8) | raw[5]);
-    int16_t t  = (int16_t)((raw[6]  << 8) | raw[7]);
-    int16_t gx = (int16_t)((raw[8]  << 8) | raw[9]);
-    int16_t gy = (int16_t)((raw[10] << 8) | raw[11]);
-    int16_t gz = (int16_t)((raw[12] << 8) | raw[13]);
+void iam20680_convert(const int32_t sum[7], int n, iam20680_data_t *out)
+{
+    const float k = 1.0f / (float)n;
 
     /* NED frame: X→forward, Y→right, Z→down  (matches Python driver sign flips) */
-    out->accel_x =  (float)ax * accel_scale * 9.80665f;
-    out->accel_y =  (float)ay * accel_scale * 9.80665f;
-    out->accel_z = -(float)az * accel_scale * 9.80665f;
+    out->accel_x =  (float)sum[0] * k * accel_scale * 9.80665f;
+    out->accel_y =  (float)sum[1] * k * accel_scale * 9.80665f;
+    out->accel_z = -(float)sum[2] * k * accel_scale * 9.80665f;
 
-    out->gyro_x =  (float)gx * gyro_scale;
-    out->gyro_y =  (float)gy * gyro_scale;
-    out->gyro_z = -(float)gz * gyro_scale;
+    out->gyro_x =  (float)sum[4] * k * gyro_scale;
+    out->gyro_y =  (float)sum[5] * k * gyro_scale;
+    out->gyro_z = -(float)sum[6] * k * gyro_scale;
 
-    out->temp = (float)t / 340.0f + 36.53f;
+    out->temp = (float)sum[3] * k / 340.0f + 36.53f;
+}
 
+bool iam20680_read(iam20680_data_t *out)
+{
+    iam20680_raw_t raw;
+    int32_t sum[7];
+
+    iam20680_read_raw(&raw);
+    for (int i = 0; i < 7; i++)
+        sum[i] = raw.v[i];
+    iam20680_convert(sum, 1, out);
     return true;
+}
+
+void iam20680_start_stream(uint8_t gyro_dlpf_cfg, uint8_t accel_dlpf_cfg)
+{
+    spi_write_reg(IAM20680_REG_CONFIG, gyro_dlpf_cfg & 0x07);        /* gyro and temperature DLPF */
+    spi_write_reg(IAM20680_REG_ACCEL_CONFIG2, accel_dlpf_cfg & 0x07); /* accelerometer DLPF */
+    spi_write_reg(IAM20680_REG_SMPLRT_DIV, 0x00);                     /* 1 kHz / (1 + 0) */
+    /* INT active high, push-pull, held until cleared, cleared by any register read. */
+    spi_write_reg(IAM20680_REG_INT_PIN_CFG, 0x30);
+    spi_write_reg(IAM20680_REG_INT_ENABLE, 0x01);                     /* data ready */
 }
 
 uint8_t iam20680_who_am_i(void)

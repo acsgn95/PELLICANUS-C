@@ -7,8 +7,14 @@
 #define PELLICANUS_PIN_SCL   27
 #define PELLICANUS_I2C_SPEED 400000   /* 400 kHz: 1 kOhm pull-ups on the board */
 
-/* IMU sampling rate */
-#define PELLICANUS_IMU_HZ    100
+/* IMU: the sensor samples at 1 kHz; each output sample is the mean of PELLICANUS_IMU_DECIMATION
+ * of them (250 Hz). The sensor's low-pass filters are set well below the output's Nyquist
+ * frequency (125 Hz): gyro DLPF_CFG 3 (41 Hz), accelerometer A_DLPF_CFG 3 (44.8 Hz). */
+#define PELLICANUS_IMU_SENSOR_HZ  1000
+#define PELLICANUS_IMU_DECIMATION 4
+#define PELLICANUS_IMU_HZ         (PELLICANUS_IMU_SENSOR_HZ / PELLICANUS_IMU_DECIMATION)
+#define PELLICANUS_IMU_GYRO_DLPF  3
+#define PELLICANUS_IMU_ACCEL_DLPF 3
 /* GNSS update rate */
 #define PELLICANUS_GNSS_HZ   4
 

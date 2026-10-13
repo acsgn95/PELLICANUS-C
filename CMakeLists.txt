@@ -14,12 +14,14 @@ add_executable(pellicanus
     src/mmc5983ma.c
     src/ms5637.c
     src/sl871_gnss.c
+    src/imu_stream.c
 )
 
 target_include_directories(pellicanus PRIVATE include)
 
 target_link_libraries(pellicanus
     pico_stdlib
+    pico_multicore
     hardware_spi
     hardware_i2c
     hardware_uart

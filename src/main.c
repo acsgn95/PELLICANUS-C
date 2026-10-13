@@ -1,30 +1,22 @@
+#include <inttypes.h>
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 #include "hardware/timer.h"
 #include "pellicanus.h"
+#include "imu_stream.h"
 
 #define PIN_LED_SENSOR  0
 
 /* ------------------------------------------------------------------ */
 /*  Shared state updated by timers                                     */
 /* ------------------------------------------------------------------ */
-static volatile bool imu_ready  = false;
 static volatile bool gnss_ready = false;
 
-static iam20680_data_t imu_data;
 static mmc5983ma_data_t mag_data;
 static ms5637_data_t    baro_data;
 static sl871_data_t     gnss_data;
 static absolute_time_t  next_mag_poll;
-
-/* 100 Hz IMU timer callback */
-static bool imu_timer_cb(repeating_timer_t *rt)
-{
-    (void)rt;
-    imu_ready = true;
-    return true;
-}
 
 /* 4 Hz GNSS timer callback */
 static bool gnss_timer_cb(repeating_timer_t *rt)
@@ -82,35 +74,32 @@ int main(void)
 
     gpio_put(PIN_LED_SENSOR, !(imu_ok && mag_ok && baro_ok));
 
-    repeating_timer_t imu_timer, gnss_timer;
+    repeating_timer_t gnss_timer;
     /* Negative period → fire every |period| ms regardless of callback duration */
-    add_repeating_timer_ms(-(1000 / PELLICANUS_IMU_HZ),  imu_timer_cb,  NULL, &imu_timer);
     add_repeating_timer_ms(-(1000 / PELLICANUS_GNSS_HZ), gnss_timer_cb, NULL, &gnss_timer);
 
-    printf("PELLICANUS v2 ready — streaming at %d Hz IMU / %d Hz GNSS\n",
-           PELLICANUS_IMU_HZ, PELLICANUS_GNSS_HZ);
+    if (imu_ok)
+        imu_stream_start();
 
+    /* One line per measurement, each with the RP2040's time in microseconds:
+     *   I seq t_us ax ay az gx gy gz temp   IMU, PELLICANUS_IMU_HZ (m/s^2, deg/s, C)
+     *   M t_us mx my mz                     magnetometer, when it has a new measurement (G)
+     *   B t_us pressure temperature         barometer, when it has a new measurement (hPa, C)
+     *   G t_us lat lon height speed heading GNSS, when a sentence brings a valid fix
+     *   S t_us imu_seq imu_dropped imu_missed   once a second */
+    printf("PELLICANUS ready: IMU %d Hz (%d Hz sensor, mean of %d), GNSS %d Hz\n",
+           PELLICANUS_IMU_HZ, PELLICANUS_IMU_SENSOR_HZ, PELLICANUS_IMU_DECIMATION,
+           PELLICANUS_GNSS_HZ);
+
+    absolute_time_t next_status = make_timeout_time_ms(1000);
+    uint32_t last_seq = 0;
     while (true) {
-        if (imu_ready) {
-            imu_ready = false;
-            iam20680_read(&imu_data);
-
-            printf("PELLICANUS v2 AX:%.4f AY:%.4f AZ:%.4f "
-                   "GX:%.4f GY:%.4f GZ:%.4f "
-                   "MX:%.4f MY:%.4f MZ:%.4f "
-                   "P:%.2f T:%.2f ALT:%.2f",
-                   imu_data.accel_x, imu_data.accel_y, imu_data.accel_z,
-                   imu_data.gyro_x,  imu_data.gyro_y,  imu_data.gyro_z,
-                   mag_data.mag_x,   mag_data.mag_y,   mag_data.mag_z,
-                   baro_data.pressure, baro_data.temperature, baro_data.altitude);
-
-            if (gnss_data.valid) {
-                printf(" LAT:%.7f LON:%.7f HGNSS:%.2f SPD:%.3f HDG:%.2f",
-                       gnss_data.latitude, gnss_data.longitude,
-                       gnss_data.altitude, gnss_data.ground_speed,
-                       gnss_data.heading);
-            }
-            printf("\n");
+        imu_stream_sample_t s;
+        while (imu_stream_pop(&s)) {
+            last_seq = s.seq;
+            printf("I %" PRIu32 " %llu %.4f %.4f %.4f %.4f %.4f %.4f %.2f\n", s.seq,
+                   (unsigned long long)s.time_us, s.data.accel_x, s.data.accel_y, s.data.accel_z, s.data.gyro_x,
+                   s.data.gyro_y, s.data.gyro_z, s.data.temp);
         }
 
         /* Never wait on the slow sensors: each one is read when it has something new. The
@@ -118,13 +107,26 @@ int main(void)
            to leave the I2C bus free. */
         if (time_reached(next_mag_poll)) {
             next_mag_poll = make_timeout_time_us(2000);
-            mmc5983ma_poll(&mag_data);
+            if (mmc5983ma_poll(&mag_data))
+                printf("M %llu %.5f %.5f %.5f\n", (unsigned long long)time_us_64(), mag_data.mag_x,
+                       mag_data.mag_y, mag_data.mag_z);
         }
-        ms5637_poll(&baro_data);
+        if (ms5637_poll(&baro_data))
+            printf("B %llu %.3f %.2f\n", (unsigned long long)time_us_64(), baro_data.pressure,
+                   baro_data.temperature);
 
         if (gnss_ready) {
             gnss_ready = false;
-            sl871_update(&gnss_data);
+            if (sl871_update(&gnss_data))
+                printf("G %llu %.7f %.7f %.2f %.3f %.2f\n", (unsigned long long)time_us_64(),
+                       gnss_data.latitude, gnss_data.longitude, gnss_data.altitude,
+                       gnss_data.ground_speed, gnss_data.heading);
+        }
+
+        if (time_reached(next_status)) {
+            next_status = make_timeout_time_ms(1000);
+            printf("S %llu %" PRIu32 " %" PRIu32 " %" PRIu32 "\n", (unsigned long long)time_us_64(), last_seq,
+                   imu_stream_dropped(), imu_stream_missed());
         }
     }
 }
