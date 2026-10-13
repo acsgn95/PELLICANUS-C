@@ -9,3 +9,5 @@ CMakeFiles/
 cmake_install.cmake
 Makefile
 __pycache__/
+calibration/
+synthetic_calibration/

@@ -163,6 +163,27 @@ picotool load -f -x build/pellicanus.uf2
 The `picotool` the SDK builds during the build has no USB support; build a full one from its
 source (or install it) for flashing, and install its `udev/60-picotool.rules` for USB access.
 
+`tools/static_analysis.py` analyses a recording of the board at rest (`--save PREFIX`): stream
+continuity, the IMU's Allan deviation (white noise and bias instability), gyro bias against
+temperature, barometer and magnetometer noise; `--plot OUT.png` draws the Allan deviation and the
+time series. Record 30 minutes or more, untouched:
+
+```text
+python3 tools/pellicanus_reader.py /dev/ttyACM0 --seconds 1800 --save static/run
+python3 tools/static_analysis.py static/run --plot static/run.png
+```
+
+## Calibration
+
+`tools/calibrate_imu.py` and `tools/calibrate_mag.py` calibrate the IMU and the magnetometer by hand,
+without equipment. Each one guides a session with the board, pose by pose, and writes the result as
+JSON. See [docs/calibration.md](docs/calibration.md).
+
+```text
+python3 tools/calibrate_imu.py --port /dev/ttyACM0
+python3 tools/calibrate_mag.py --port /dev/ttyACM0 --imu-calibration calibration/imu_..._imu_calibration.json
+```
+
 ## Project Structure
 
 ```text
@@ -178,9 +199,16 @@ source (or install it) for flashing, and install its `udev/60-picotool.rules` fo
 |   |-- ms5637.h
 |   `-- sl871_gnss.h
 |-- docs/
+|   |-- calibration.md
 |   `-- protocol.md
 |-- tools/
-|   `-- pellicanus_reader.py
+|   |-- pellicanus_reader.py
+|   |-- static_analysis.py
+|   |-- calibrate_imu.py
+|   |-- calibrate_mag.py
+|   |-- calibration_common.py
+|   |-- live_capture.py
+|   `-- test_calibration_synthetic.py
 `-- src/
     |-- main.c
     |-- protocol.c
