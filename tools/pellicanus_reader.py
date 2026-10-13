@@ -214,8 +214,9 @@ def main() -> None:
         print(line)
         if s["values"] and name in ("IMU", "MAG", "BARO"):
             cols = list(zip(*s["values"]))
-            means = " ".join(f"{sum(c) / len(c):.5g}" for c in cols)
-            stds = " ".join(f"{(sum((x - sum(c) / len(c)) ** 2 for x in c) / len(c)) ** 0.5:.3g}" for c in cols)
+            mu = [sum(c) / len(c) for c in cols]
+            means = " ".join(f"{m:.5g}" for m in mu)
+            stds = " ".join(f"{(sum((x - m) ** 2 for x in c) / len(c)) ** 0.5:.3g}" for c, m in zip(cols, mu))
             print(f"         mean [{means}]\n         std  [{stds}]")
     if status:
         fw = status[0].rstrip(b"\0").decode()
