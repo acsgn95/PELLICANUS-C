@@ -70,4 +70,7 @@ typedef struct {
 bool iam20680_init(iam20680_accel_fs_t accel_fs, iam20680_gyro_fs_t gyro_fs);
 bool iam20680_read(iam20680_data_t *out);
 
+/* The WHO_AM_I value read by the last iam20680_init(), for diagnostics. */
+uint8_t iam20680_who_am_i(void);
+
 #endif /* IAM20680_H */

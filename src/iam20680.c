@@ -6,6 +6,7 @@
 /* Sensitivity divisors matching the Python driver (8g / 500dps defaults) */
 static float accel_scale = 1.0f / 4096.0f;   /* 8g  → 4096 LSB/g  */
 static float gyro_scale  = 1.0f / 65.5f;      /* 500dps → 65.5 LSB/dps */
+static uint8_t who_am_i = 0;                 /* what WHO_AM_I read at init */
 
 static inline void cs_low(void)  { gpio_put(IAM20680_PIN_CS, 0); }
 static inline void cs_high(void) { gpio_put(IAM20680_PIN_CS, 1); }
@@ -53,7 +54,8 @@ bool iam20680_init(iam20680_accel_fs_t accel_fs, iam20680_gyro_fs_t gyro_fs)
     cs_high();
     sleep_ms(10);
 
-    if (spi_read_reg(IAM20680_REG_WHO_AM_I) != IAM20680_WHO_AM_I_VAL)
+    who_am_i = spi_read_reg(IAM20680_REG_WHO_AM_I);
+    if (who_am_i != IAM20680_WHO_AM_I_VAL)
         return false;
 
     /* Full device reset */
@@ -114,4 +116,9 @@ bool iam20680_read(iam20680_data_t *out)
     out->temp = (float)t / 340.0f + 36.53f;
 
     return true;
+}
+
+uint8_t iam20680_who_am_i(void)
+{
+    return who_am_i;
 }

@@ -70,7 +70,11 @@ int main(void)
     bool mag_ok  = mmc5983ma_init();
     bool baro_ok = ms5637_init();
 
-    printf(imu_ok  ? "[OK] IAM-20680 initialised\n"  : "[ERROR] IAM-20680 not found\n");
+    if (imu_ok)
+        printf("[OK] IAM-20680 initialised\n");
+    else
+        printf("[ERROR] IAM-20680 not found (WHO_AM_I read 0x%02X, expected 0x%02X)\n",
+               iam20680_who_am_i(), IAM20680_WHO_AM_I_VAL);
     printf(mag_ok  ? "[OK] MMC5983MA initialised\n"  : "[ERROR] MMC5983MA not found\n");
     printf(baro_ok ? "[OK] MS5637 initialised\n"     : "[ERROR] MS5637 not found\n");
     printf("[OK] SL-871 GNSS initialised\n");
