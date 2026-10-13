@@ -30,4 +30,8 @@ target_link_libraries(pellicanus
 pico_enable_stdio_usb(pellicanus 1)
 pico_enable_stdio_uart(pellicanus 0)
 
-# pico_add_extra_outputs(pellicanus)  -- requires picotool; use flash.ps1 instead
+# The UF2 and the other outputs need picotool, which the SDK fetches and builds when it is not
+# installed (it needs libusb-1.0). On Windows flash.ps1 makes the UF2 instead.
+if(NOT CMAKE_HOST_WIN32)
+    pico_add_extra_outputs(pellicanus)
+endif()
