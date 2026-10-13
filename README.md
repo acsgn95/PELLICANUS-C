@@ -10,7 +10,7 @@ PELLICANUS-C is the firmware for the PELLICANUS hardware platform. It runs on a 
 - MS5637 barometer support for pressure, temperature, and approximate altitude.
 - SL-871 GNSS support for position, speed, heading, altitude, and fix data.
 - USB CDC serial output enabled.
-- IMU, magnetometer, and barometer sampling at 100 Hz.
+- IMU sampling at 100 Hz; magnetometer at 100 Hz and barometer at 50 Hz, both read without blocking.
 - GNSS update loop at 4 Hz.
 
 ## Hardware Connections
@@ -23,7 +23,7 @@ MMC5983MA and MS5637 share the same I2C bus.
 | --- | --- |
 | SDA | GPIO26 |
 | SCL | GPIO27 |
-| Speed | 100 kHz |
+| Speed | 400 kHz |
 
 ### IAM-20680 SPI
 

@@ -44,14 +44,16 @@ bool mmc5983ma_init(void)
     return true;
 }
 
+bool mmc5983ma_poll(mmc5983ma_data_t *out)
+{
+    /* Continuous mode measures by itself; read only when a measurement is ready, never wait. */
+    if (!(i2c_read_reg(MMC5983MA_REG_STATUS) & MMC5983MA_STATUS_MEAS_M_DONE))
+        return false;
+    return mmc5983ma_read(out);
+}
+
 bool mmc5983ma_read(mmc5983ma_data_t *out)
 {
-    /* Poll until measurement done (or timeout) */
-    for (int i = 0; i < 100; i++) {
-        if (i2c_read_reg(MMC5983MA_REG_STATUS) & MMC5983MA_STATUS_MEAS_M_DONE)
-            break;
-        sleep_us(200);
-    }
 
     /* Read 7 bytes: XOUT0,XOUT1,YOUT0,YOUT1,ZOUT0,ZOUT1,XYZOUT2 */
     uint8_t raw[7];

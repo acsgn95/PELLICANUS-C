@@ -45,6 +45,9 @@ typedef struct {
 } mmc5983ma_data_t;
 
 bool mmc5983ma_init(void);
+/* Reads the output registers as they are. */
 bool mmc5983ma_read(mmc5983ma_data_t *out);
+/* Non-blocking: true when a new measurement was ready and is now in *out. */
+bool mmc5983ma_poll(mmc5983ma_data_t *out);
 
 #endif /* MMC5983MA_H */

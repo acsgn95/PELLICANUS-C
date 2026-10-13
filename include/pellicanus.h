@@ -5,7 +5,7 @@
 #define PELLICANUS_I2C_PORT  i2c1
 #define PELLICANUS_PIN_SDA   26
 #define PELLICANUS_PIN_SCL   27
-#define PELLICANUS_I2C_SPEED 100000   /* 100 kHz */
+#define PELLICANUS_I2C_SPEED 400000   /* 400 kHz: 1 kOhm pull-ups on the board */
 
 /* IMU sampling rate */
 #define PELLICANUS_IMU_HZ    100

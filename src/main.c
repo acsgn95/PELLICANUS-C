@@ -16,6 +16,7 @@ static iam20680_data_t imu_data;
 static mmc5983ma_data_t mag_data;
 static ms5637_data_t    baro_data;
 static sl871_data_t     gnss_data;
+static absolute_time_t  next_mag_poll;
 
 /* 100 Hz IMU timer callback */
 static bool imu_timer_cb(repeating_timer_t *rt)
@@ -93,8 +94,6 @@ int main(void)
         if (imu_ready) {
             imu_ready = false;
             iam20680_read(&imu_data);
-            mmc5983ma_read(&mag_data);
-            ms5637_read(&baro_data);
 
             printf("PELLICANUS v2 AX:%.4f AY:%.4f AZ:%.4f "
                    "GX:%.4f GY:%.4f GZ:%.4f "
@@ -113,6 +112,15 @@ int main(void)
             }
             printf("\n");
         }
+
+        /* Never wait on the slow sensors: each one is read when it has something new. The
+           magnetometer measures at 100 Hz; its status is looked at every 2 ms, not on every pass,
+           to leave the I2C bus free. */
+        if (time_reached(next_mag_poll)) {
+            next_mag_poll = make_timeout_time_us(2000);
+            mmc5983ma_poll(&mag_data);
+        }
+        ms5637_poll(&baro_data);
 
         if (gnss_ready) {
             gnss_ready = false;

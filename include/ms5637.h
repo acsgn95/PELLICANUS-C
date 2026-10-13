@@ -26,7 +26,15 @@ typedef struct {
     float altitude;      /* meters above sea level (approx) */
 } ms5637_data_t;
 
+/* A conversion's worst-case time at OSR=1024 is 2.28 ms. */
+#define MS5637_CONVERSION_US   2500
+/* A pressure and temperature pair every 20 ms: 50 Hz. */
+#define MS5637_CYCLE_PERIOD_US 20000
+
 bool ms5637_init(void);
+/* Blocking: about 6 ms. */
 bool ms5637_read(ms5637_data_t *out);
+/* Non-blocking: call often; true when a new measurement is in *out. */
+bool ms5637_poll(ms5637_data_t *out);
 
 #endif /* MS5637_H */
