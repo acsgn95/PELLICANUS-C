@@ -13,20 +13,11 @@
 /* ------------------------------------------------------------------ */
 /*  Shared state updated by timers                                     */
 /* ------------------------------------------------------------------ */
-static volatile bool gnss_ready = false;
 
 static mmc5983ma_data_t mag_data;
 static ms5637_data_t    baro_data;
 static sl871_data_t     gnss_data;
 static absolute_time_t  next_mag_poll;
-
-/* 4 Hz GNSS timer callback */
-static bool gnss_timer_cb(repeating_timer_t *rt)
-{
-    (void)rt;
-    gnss_ready = true;
-    return true;
-}
 
 /* ------------------------------------------------------------------ */
 /*  Initialise shared I2C1 bus                                         */
@@ -124,13 +115,12 @@ int main(void)
                   iam20680_who_am_i());
     send_text(mag_ok  ? "[OK] MMC5983MA initialised"  : "[ERROR] MMC5983MA not found");
     send_text(baro_ok ? "[OK] MS5637 initialised"     : "[ERROR] MS5637 not found");
-    send_text("[OK] SL-871 GNSS initialised");
+    if (sl871_baud() > 0)
+        send_text("[OK] SL-871 GNSS heard at %d baud", sl871_baud());
+    else
+        send_text("[ERROR] SL-871 GNSS not heard at 115200 or 9600 baud");
 
     gpio_put(PIN_LED_SENSOR, !(imu_ok && mag_ok && baro_ok));
-
-    repeating_timer_t gnss_timer;
-    /* Negative period → fire every |period| ms regardless of callback duration */
-    add_repeating_timer_ms(-(1000 / PELLICANUS_GNSS_HZ), gnss_timer_cb, NULL, &gnss_timer);
 
     if (imu_ok)
         imu_stream_start();
@@ -140,6 +130,7 @@ int main(void)
               PELLICANUS_IMU_DECIMATION, PROTOCOL_VERSION);
 
     absolute_time_t next_status = make_timeout_time_ms(1000);
+    uint32_t gnss_overflow = 0;
     while (true) {
         imu_stream_sample_t s;
         while (imu_stream_pop(&s)) {
@@ -167,14 +158,17 @@ int main(void)
             protocol_send(PROTOCOL_BARO, baro_seq++, time_us_64(), &p, sizeof(p));
         }
 
-        if (gnss_ready) {
-            gnss_ready = false;
-            sl871_update(&gnss_data); /* sentences go out through send_nmea as they complete */
-        }
+        /* Received by interrupt; parsed here. Each sentence goes out through send_nmea. */
+        sl871_update(&gnss_data);
 
         if (time_reached(next_status)) {
             next_status = make_timeout_time_ms(1000);
             send_status();
+            if (sl871_overflow() != gnss_overflow) {
+                gnss_overflow = sl871_overflow();
+                send_text("[WARN] GNSS receive buffer overflowed: %lu bytes lost so far",
+                          (unsigned long)gnss_overflow);
+            }
         }
     }
 }

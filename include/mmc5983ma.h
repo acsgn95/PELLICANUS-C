@@ -33,13 +33,13 @@
 #define MMC5983MA_CTRL0_RESET   (1 << 4)
 #define MMC5983MA_CTRL0_AUTO_SR_EN (1 << 5) /* automatic SET/RESET */
 
-/* CTRL1: bandwidth, i.e. measurement time; 100 Hz is 8 ms, enough for 100 Hz continuous mode */
+/* CTRL1: bandwidth, i.e. measurement time; 100 Hz is 8 ms, the lowest-noise setting */
 #define MMC5983MA_CTRL1_BW_100HZ 0x00
 
 /* CTRL2 bits – continuous mode. CM_FREQ codes: 1 Hz 1, 10 Hz 2, 20 Hz 3, 50 Hz 4, 100 Hz 5,
- * 200 Hz 6, 1000 Hz 7 (0x04, used before as "100 Hz", is 50 Hz). */
+ * 200 Hz 6, 1000 Hz 7. */
 #define MMC5983MA_CTRL2_CMM_EN    (1 << 3)
-#define MMC5983MA_CTRL2_CM_100HZ  0x05
+#define MMC5983MA_CTRL2_CM_50HZ   0x04
 #define MMC5983MA_CTRL2_PRD_SET_100 (0x3 << 4) /* a SET every 100 measurements */
 #define MMC5983MA_CTRL2_EN_PRD_SET  (1 << 7)   /* periodic SET (needs AUTO_SR_EN) */
 

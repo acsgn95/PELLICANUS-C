@@ -56,8 +56,8 @@ The CRC uses polynomial 0x1021 and initial value 0xFFFF, with no reflection and 
 |---|---|---|
 | field x, y, z | float32 × 3 | gauss |
 
-100 Hz continuous measurement, sent as each is ready. Automatic SET/RESET is on, with a SET pulse
-every 100 measurements, so the sensor's offset does not drift with temperature or after a strong
+50 Hz continuous measurement, sent as each is ready. Automatic SET/RESET is on, with a SET pulse
+every 100 measurements (2 s), so the sensor's offset does not drift with temperature or after a strong
 field. `time_us` is when it was read, within 2 ms of the measurement.
 
 ### `0x03` BARO, 8 bytes, 40 Hz
@@ -72,7 +72,9 @@ compensation, second order included. `time_us` is when the conversion pair compl
 
 ### `0x04` GNSS, variable
 
-One NMEA sentence from the SL-871, ASCII, without CR LF, sent as it completes.
+One NMEA sentence from the SL-871, ASCII, without CR LF, sent as it completes. The receiver is set
+to 4 fixes a second (PMTK220,250) at start; its acknowledgement, `$PMTK001,220,3`, comes through
+here too.
 
 ### `0x05` STATUS, 50 bytes, once a second
 

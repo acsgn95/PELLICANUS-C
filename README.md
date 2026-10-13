@@ -12,9 +12,11 @@ PELLICANUS-C is the firmware for the PELLICANUS hardware platform. It runs on a 
 - Binary USB CDC output with timestamps, sequence numbers and CRC (docs/protocol.md).
 - IMU sampled at 1 kHz on the second core, from its data-ready interrupt, and averaged to 250 Hz;
   every sample carries the RP2040's time in microseconds and a sequence number.
-- Magnetometer at 100 Hz with automatic SET/RESET; barometer at 40 Hz with pressure at OSR 8192;
+- Magnetometer at 50 Hz with automatic SET/RESET; barometer at 40 Hz with pressure at OSR 8192;
   both read without blocking.
-- GNSS update loop at 4 Hz.
+- GNSS received by interrupt, so no byte is lost; its baud rate is found at start (the receiver
+  is moved from 9600 to 115200), it is set to 4 fixes a second, and every NMEA sentence is
+  forwarded.
 
 ## Hardware Connections
 
@@ -130,7 +132,7 @@ board's clock, sequence gaps, CRC errors, and the board's own counters. Typical 
 [OK] IAM-20680HT initialised (WHO_AM_I 0xFA)
 [OK] MMC5983MA initialised
 [OK] MS5637 initialised
-[OK] SL-871 GNSS initialised
+[OK] SL-871 GNSS heard at 115200 baud
 PELLICANUS 2.1.0 ready: IMU 250 Hz (1000 Hz sensor, mean of 4), protocol 1
 ```
 

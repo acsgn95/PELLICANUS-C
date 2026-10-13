@@ -36,12 +36,12 @@ bool mmc5983ma_init(void)
     i2c_write_reg(MMC5983MA_REG_CTRL0, MMC5983MA_CTRL0_SET);
     sleep_ms(1);
 
-    /* Continuous measurement at 100 Hz (8 ms measurements), with automatic SET/RESET and a SET
-       pulse every 100 measurements (about once a second): without it the bridge's offset moves
-       with temperature and after a strong field. */
+    /* Continuous measurement at 50 Hz (8 ms measurements), with automatic SET/RESET and a SET
+       pulse every 100 measurements (every 2 s): without it the bridge's offset moves with
+       temperature and after a strong field. */
     i2c_write_reg(MMC5983MA_REG_CTRL1, MMC5983MA_CTRL1_BW_100HZ);
     i2c_write_reg(MMC5983MA_REG_CTRL0, MMC5983MA_CTRL0_AUTO_SR_EN);
-    i2c_write_reg(MMC5983MA_REG_CTRL2, MMC5983MA_CTRL2_CMM_EN | MMC5983MA_CTRL2_CM_100HZ |
+    i2c_write_reg(MMC5983MA_REG_CTRL2, MMC5983MA_CTRL2_CMM_EN | MMC5983MA_CTRL2_CM_50HZ |
                                            MMC5983MA_CTRL2_EN_PRD_SET | MMC5983MA_CTRL2_PRD_SET_100);
 
     return true;
