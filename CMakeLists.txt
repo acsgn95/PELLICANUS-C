@@ -14,12 +14,15 @@ add_executable(pellicanus
     src/mmc5983ma.c
     src/ms5637.c
     src/sl871_gnss.c
+    src/imu_stream.c
+    src/protocol.c
 )
 
 target_include_directories(pellicanus PRIVATE include)
 
 target_link_libraries(pellicanus
     pico_stdlib
+    pico_multicore
     hardware_spi
     hardware_i2c
     hardware_uart
@@ -27,7 +30,18 @@ target_link_libraries(pellicanus
     hardware_timer
 )
 
+# The USB output is the binary protocol (docs/protocol.md). The CDC transmit buffer is raised from
+# 64 bytes so that whole packets fit, and the USB stack never waits more than 1 ms for the host.
+target_compile_definitions(pellicanus PRIVATE
+    CFG_TUD_CDC_TX_BUFSIZE=1024
+    PICO_STDIO_USB_STDOUT_TIMEOUT_US=1000
+)
+
 pico_enable_stdio_usb(pellicanus 1)
 pico_enable_stdio_uart(pellicanus 0)
 
-# pico_add_extra_outputs(pellicanus)  -- requires picotool; use flash.ps1 instead
+# The UF2 and the other outputs need picotool, which the SDK fetches and builds when it is not
+# installed (it needs libusb-1.0). On Windows flash.ps1 makes the UF2 instead.
+if(NOT CMAKE_HOST_WIN32)
+    pico_add_extra_outputs(pellicanus)
+endif()
