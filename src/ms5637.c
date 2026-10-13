@@ -50,12 +50,12 @@ bool ms5637_read(ms5637_data_t *out)
 {
     /* Convert D1 (pressure) */
     send_cmd(MS5637_CMD_CONV_D1);
-    sleep_ms(3);   /* OSR=1024 max conversion time ~2.28 ms */
+    sleep_us(MS5637_PRESSURE_CONVERSION_US);
     uint32_t D1 = read_adc();
 
     /* Convert D2 (temperature) */
     send_cmd(MS5637_CMD_CONV_D2);
-    sleep_ms(3);
+    sleep_us(MS5637_TEMPERATURE_CONVERSION_US);
     uint32_t D2 = read_adc();
 
     compensate(D1, D2, out);
@@ -80,7 +80,7 @@ bool ms5637_poll(ms5637_data_t *out)
                 return false;
             next_cycle = make_timeout_time_us(MS5637_CYCLE_PERIOD_US);
             send_cmd(MS5637_CMD_CONV_D1);
-            due = make_timeout_time_us(MS5637_CONVERSION_US);
+            due = make_timeout_time_us(MS5637_PRESSURE_CONVERSION_US);
             state = MS5637_PRESSURE;
             return false;
         case MS5637_PRESSURE:
@@ -88,7 +88,7 @@ bool ms5637_poll(ms5637_data_t *out)
                 return false;
             pressure_raw = read_adc();
             send_cmd(MS5637_CMD_CONV_D2);
-            due = make_timeout_time_us(MS5637_CONVERSION_US);
+            due = make_timeout_time_us(MS5637_TEMPERATURE_CONVERSION_US);
             state = MS5637_TEMPERATURE;
             return false;
         case MS5637_TEMPERATURE:

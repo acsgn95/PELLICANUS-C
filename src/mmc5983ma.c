@@ -36,10 +36,13 @@ bool mmc5983ma_init(void)
     i2c_write_reg(MMC5983MA_REG_CTRL0, MMC5983MA_CTRL0_SET);
     sleep_ms(1);
 
-    /* Enable continuous measurement mode at 100 Hz, 100 Hz bandwidth */
-    i2c_write_reg(MMC5983MA_REG_CTRL1, 0x00);   /* BW = 100 Hz */
-    i2c_write_reg(MMC5983MA_REG_CTRL2,
-                  MMC5983MA_CTRL2_CMM_EN | MMC5983MA_CTRL2_ODR_100HZ);
+    /* Continuous measurement at 100 Hz (8 ms measurements), with automatic SET/RESET and a SET
+       pulse every 100 measurements (about once a second): without it the bridge's offset moves
+       with temperature and after a strong field. */
+    i2c_write_reg(MMC5983MA_REG_CTRL1, MMC5983MA_CTRL1_BW_100HZ);
+    i2c_write_reg(MMC5983MA_REG_CTRL0, MMC5983MA_CTRL0_AUTO_SR_EN);
+    i2c_write_reg(MMC5983MA_REG_CTRL2, MMC5983MA_CTRL2_CMM_EN | MMC5983MA_CTRL2_CM_100HZ |
+                                           MMC5983MA_CTRL2_EN_PRD_SET | MMC5983MA_CTRL2_PRD_SET_100);
 
     return true;
 }
@@ -67,8 +70,9 @@ bool mmc5983ma_read(mmc5983ma_data_t *out)
     out->mag_y = ((float)y18 - MMC5983MA_ZERO_OFFSET) / MMC5983MA_SENSITIVITY;
     out->mag_z = ((float)z18 - MMC5983MA_ZERO_OFFSET) / MMC5983MA_SENSITIVITY;
 
-    uint8_t t = i2c_read_reg(MMC5983MA_REG_TOUT);
-    out->temp = -75.0f + (float)t * (200.0f / 255.0f);
+    /* The temperature register is only refreshed by a temperature measurement, which continuous
+       mode does not make: reading it gave a stale value and cost an I2C transfer per sample. */
+    out->temp = 0.0f;
 
     return true;
 }

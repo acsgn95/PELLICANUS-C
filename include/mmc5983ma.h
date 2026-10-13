@@ -31,17 +31,24 @@
 #define MMC5983MA_CTRL0_TM_M    (1 << 0)   /* Take measurement */
 #define MMC5983MA_CTRL0_SET     (1 << 3)
 #define MMC5983MA_CTRL0_RESET   (1 << 4)
+#define MMC5983MA_CTRL0_AUTO_SR_EN (1 << 5) /* automatic SET/RESET */
 
-/* CTRL2 bits – continuous mode */
-#define MMC5983MA_CTRL2_CMM_EN  (1 << 3)
-#define MMC5983MA_CTRL2_ODR_100HZ 0x04     /* 100 Hz ODR */
+/* CTRL1: bandwidth, i.e. measurement time; 100 Hz is 8 ms, enough for 100 Hz continuous mode */
+#define MMC5983MA_CTRL1_BW_100HZ 0x00
+
+/* CTRL2 bits – continuous mode. CM_FREQ codes: 1 Hz 1, 10 Hz 2, 20 Hz 3, 50 Hz 4, 100 Hz 5,
+ * 200 Hz 6, 1000 Hz 7 (0x04, used before as "100 Hz", is 50 Hz). */
+#define MMC5983MA_CTRL2_CMM_EN    (1 << 3)
+#define MMC5983MA_CTRL2_CM_100HZ  0x05
+#define MMC5983MA_CTRL2_PRD_SET_100 (0x3 << 4) /* a SET every 100 measurements */
+#define MMC5983MA_CTRL2_EN_PRD_SET  (1 << 7)   /* periodic SET (needs AUTO_SR_EN) */
 
 /* STATUS bits */
 #define MMC5983MA_STATUS_MEAS_M_DONE (1 << 0)
 
 typedef struct {
     float mag_x, mag_y, mag_z;   /* Gauss */
-    float temp;                   /* Celsius */
+    float temp;                   /* Celsius; not measured in continuous mode (0) */
 } mmc5983ma_data_t;
 
 bool mmc5983ma_init(void);

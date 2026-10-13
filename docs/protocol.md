@@ -56,17 +56,19 @@ The CRC uses polynomial 0x1021 and initial value 0xFFFF, with no reflection and 
 |---|---|---|
 | field x, y, z | float32 × 3 | gauss |
 
-Sent when the MMC5983MA has a new measurement. `time_us` is when it was read.
+100 Hz continuous measurement, sent as each is ready. Automatic SET/RESET is on, with a SET pulse
+every 100 measurements, so the sensor's offset does not drift with temperature or after a strong
+field. `time_us` is when it was read, within 2 ms of the measurement.
 
-### `0x03` BARO, 8 bytes, 50 Hz
+### `0x03` BARO, 8 bytes, 40 Hz
 
 | Field | Type | Unit |
 |---|---|---|
 | pressure | float32 | Pa |
 | temperature | float32 | °C |
 
-The MS5637's datasheet compensation, second order included. `time_us` is when the conversion pair
-completed.
+Pressure at OSR 8192 (about 1.6 Pa RMS), temperature at OSR 1024, with the MS5637's datasheet
+compensation, second order included. `time_us` is when the conversion pair completed.
 
 ### `0x04` GNSS, variable
 
