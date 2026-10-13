@@ -12,6 +12,11 @@
 /* GNSS update rate */
 #define PELLICANUS_GNSS_HZ   4
 
+/* IMU full-scale ranges. A vehicle's vibration and manoeuvres clip +-2 g and +-500 deg/s; the
+ * widest ranges cost resolution the sensor's noise already hides. */
+#define PELLICANUS_ACCEL_FS  IAM20680_ACCEL_FS_16G
+#define PELLICANUS_GYRO_FS   IAM20680_GYRO_FS_2000DPS
+
 #include "iam20680.h"
 #include "mmc5983ma.h"
 #include "ms5637.h"
