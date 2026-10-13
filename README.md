@@ -49,11 +49,23 @@ MMC5983MA and MS5637 share the same I2C bus.
 | Initial baud rate | 9600 |
 | Fast baud rate | 115200 |
 
-### Status LED
+### LEDs
 
-| Purpose | Pico GPIO |
+| LED | Net | Driven by |
+| --- | --- | --- |
+| D2 | GPIO0 | the firmware: the board's health |
+| D4 | TIMEPULSE (also GPIO5) | the GNSS receiver's 1PPS: a pulse a second once it has a fix |
+
+D2:
+
+| Pattern | Meaning |
 | --- | --- |
-| Sensor status LED | GPIO0 |
+| solid | starting the sensors |
+| one short flash a second | healthy, and a host is reading the stream |
+| two short flashes a second | healthy, but nobody is reading (not connected, or packets dropped) |
+| five flashes a second | a fault: a sensor did not start, the GNSS receiver was not heard, IMU samples were lost, or the GNSS receive buffer overflowed |
+
+GPIO5 is only ever an input: it shares D4's net with the receiver's TIMEPULSE output.
 
 ## Requirements
 

@@ -2,13 +2,13 @@
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
+#include "pico/stdio_usb.h"
 #include "hardware/i2c.h"
 #include "hardware/timer.h"
 #include "pellicanus.h"
 #include "imu_stream.h"
 #include "protocol.h"
 
-#define PIN_LED_SENSOR  0
 
 /* ------------------------------------------------------------------ */
 /*  Shared state updated by timers                                     */
@@ -36,6 +36,32 @@ static void i2c1_init_bus(void)
 /* ------------------------------------------------------------------ */
 static uint32_t text_seq, mag_seq, baro_seq, gnss_seq, status_seq;
 static uint8_t sensors_ok;
+
+/* ------------------------------------------------------------------ */
+/*  The health LED (D2), driven from the main loop without waiting      */
+/* ------------------------------------------------------------------ */
+typedef enum {
+    LED_BOOT,     /* solid: starting the sensors */
+    LED_OK,       /* one short flash a second: healthy, host reading */
+    LED_NO_HOST,  /* two short flashes a second: healthy, nobody reading the stream */
+    LED_FAULT,    /* five flashes a second: a sensor missing, samples lost, GNSS not heard */
+} led_state_t;
+
+static led_state_t led_state = LED_BOOT;
+
+static void led_update(void)
+{
+    const uint32_t ms = to_ms_since_boot(get_absolute_time());
+    const uint32_t phase = ms % 1000;
+    bool on = false;
+    switch (led_state) {
+        case LED_BOOT:    on = true; break;
+        case LED_OK:      on = phase < 80; break;
+        case LED_NO_HOST: on = phase < 80 || (phase >= 200 && phase < 280); break;
+        case LED_FAULT:   on = (ms % 200) < 100; break;
+    }
+    gpio_put(PELLICANUS_PIN_LED_HEALTH, on ? PELLICANUS_LED_ON : !PELLICANUS_LED_ON);
+}
 
 /* A message for the host, as a TEXT packet (dropped like any packet when nobody reads). */
 static void send_text(const char *format, ...)
@@ -88,13 +114,13 @@ int main(void)
     stdio_init_all();
     sleep_ms(2000);   /* wait for USB CDC enumeration */
 
-    gpio_init(PIN_LED_SENSOR);
-    gpio_set_dir(PIN_LED_SENSOR, GPIO_OUT);
+    gpio_init(PELLICANUS_PIN_LED_HEALTH);
+    gpio_set_dir(PELLICANUS_PIN_LED_HEALTH, GPIO_OUT);
 
     for (int i = 0; i < 3; i++) {
-        gpio_put(PIN_LED_SENSOR, 0);
+        gpio_put(PELLICANUS_PIN_LED_HEALTH, !PELLICANUS_LED_ON);
         sleep_ms(200);
-        gpio_put(PIN_LED_SENSOR, 1);
+        gpio_put(PELLICANUS_PIN_LED_HEALTH, PELLICANUS_LED_ON);
         sleep_ms(200);
     }
 
@@ -120,7 +146,8 @@ int main(void)
     else
         send_text("[ERROR] SL-871 GNSS not heard at 115200 or 9600 baud");
 
-    gpio_put(PIN_LED_SENSOR, !(imu_ok && mag_ok && baro_ok));
+    /* Solid until the loop starts: the LED's state is set once a second from the board's health. */
+    led_update();
 
     if (imu_ok)
         imu_stream_start();
@@ -130,6 +157,8 @@ int main(void)
               PELLICANUS_IMU_DECIMATION, PROTOCOL_VERSION);
 
     absolute_time_t next_status = make_timeout_time_ms(1000);
+    uint32_t lost_before = 0, usb_dropped_before = 0;
+    const bool sensors_all = (sensors_ok == (STATUS_SENSOR_IMU | STATUS_SENSOR_MAG | STATUS_SENSOR_BARO));
     uint32_t gnss_overflow = 0;
     while (true) {
         imu_stream_sample_t s;
@@ -164,11 +193,21 @@ int main(void)
         if (time_reached(next_status)) {
             next_status = make_timeout_time_ms(1000);
             send_status();
+            bool fault = !sensors_all || sl871_baud() == 0;
             if (sl871_overflow() != gnss_overflow) {
                 gnss_overflow = sl871_overflow();
+                fault = true;
                 send_text("[WARN] GNSS receive buffer overflowed: %lu bytes lost so far",
                           (unsigned long)gnss_overflow);
             }
+            const uint32_t lost = imu_stream_dropped() + imu_stream_missed();
+            fault = fault || lost != lost_before;
+            lost_before = lost;
+            /* Nobody reading: not connected, or packets dropped for want of room this second. */
+            const bool no_host = !stdio_usb_connected() || protocol_dropped() != usb_dropped_before;
+            usb_dropped_before = protocol_dropped();
+            led_state = fault ? LED_FAULT : no_host ? LED_NO_HOST : LED_OK;
         }
+        led_update();
     }
 }

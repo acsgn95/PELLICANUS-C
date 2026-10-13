@@ -16,6 +16,13 @@
 #define PELLICANUS_IMU_GYRO_DLPF  3
 #define PELLICANUS_IMU_ACCEL_DLPF 3
 
+/* LEDs. D2 is the firmware's: the board's health (see main.c). D4 is lit by the GNSS receiver's
+ * TIMEPULSE (1PPS), a pulse a second once it has a fix; the same net reaches GPIO5, which must only
+ * ever be an input: driving it would fight the receiver's output. */
+#define PELLICANUS_PIN_LED_HEALTH 0   /* D2 */
+#define PELLICANUS_LED_ON         1   /* level that lights D2 */
+#define PELLICANUS_PIN_TIMEPULSE  5   /* D4, input only */
+
 /* Reported in every STATUS packet. */
 #define PELLICANUS_FIRMWARE_VERSION "2.1.0"
 
