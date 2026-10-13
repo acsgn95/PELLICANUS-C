@@ -68,9 +68,11 @@ typedef enum {
     IAM20680_GYRO_FS_2000DPS = 0x18,
 } iam20680_gyro_fs_t;
 
+/* In the sensor's own axes (right-handed, as its datasheet draws them); turning them into the
+ * vehicle's is the host's calibration. */
 typedef struct {
     float accel_x, accel_y, accel_z;   /* m/s^2 */
-    float gyro_x,  gyro_y,  gyro_z;    /* deg/s */
+    float gyro_x,  gyro_y,  gyro_z;    /* rad/s */
     float temp;                          /* Celsius */
 } iam20680_data_t;
 

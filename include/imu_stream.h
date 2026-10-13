@@ -38,4 +38,7 @@ uint32_t imu_stream_dropped(void);
 /* 1 kHz samples core 1 did not read before the next one replaced them. */
 uint32_t imu_stream_missed(void);
 
+/* Output samples produced so far. */
+uint32_t imu_stream_produced(void);
+
 #endif /* IMU_STREAM_H */

@@ -13,6 +13,7 @@
 static queue_t queue;
 static volatile uint32_t dropped;
 static volatile uint32_t missed;
+static volatile uint32_t produced;
 
 static void core1_main(void)
 {
@@ -44,6 +45,7 @@ static void core1_main(void)
 
         imu_stream_sample_t sample;
         sample.seq = seq++;
+        produced = seq;
         sample.time_us = time_sum / (uint64_t)n;
         iam20680_convert(sum, n, &sample.data);
         if (!queue_try_add(&queue, &sample))
@@ -82,4 +84,9 @@ uint32_t imu_stream_dropped(void)
 uint32_t imu_stream_missed(void)
 {
     return missed;
+}
+
+uint32_t imu_stream_produced(void)
+{
+    return produced;
 }

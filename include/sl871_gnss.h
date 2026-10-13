@@ -24,7 +24,11 @@ typedef struct {
     bool    valid;
 } sl871_data_t;
 
+/* Called with every complete NMEA sentence (without CR LF) as it is received. */
+typedef void (*sl871_sentence_handler_t)(const char *sentence, int length);
+
 void sl871_init(void);
+void sl871_set_sentence_handler(sl871_sentence_handler_t handler);
 /* Call from a 4 Hz timer or polling loop; fills *out when a valid fix arrives */
 bool sl871_update(sl871_data_t *out);
 

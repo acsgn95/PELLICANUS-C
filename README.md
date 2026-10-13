@@ -9,7 +9,7 @@ PELLICANUS-C is the firmware for the PELLICANUS hardware platform. It runs on a 
 - MMC5983MA magnetometer support.
 - MS5637 barometer support for pressure, temperature, and approximate altitude.
 - SL-871 GNSS support for position, speed, heading, altitude, and fix data.
-- USB CDC serial output enabled.
+- Binary USB CDC output with timestamps, sequence numbers and CRC (docs/protocol.md).
 - IMU sampled at 1 kHz on the second core, from its data-ready interrupt, and averaged to 250 Hz;
   every sample carries the RP2040's time in microseconds and a sequence number.
 - Magnetometer and barometer read without blocking (about 50 Hz each).
@@ -110,27 +110,43 @@ $OBJCOPY = "C:\arm-gnu-toolchain\bin\arm-none-eabi-objcopy.exe"
 
 Update `flash.ps1` if these paths are different on your machine.
 
-## Serial Output
+## USB Output
 
-After startup, the firmware prints initialization status and telemetry over USB CDC serial.
+The firmware sends a binary stream over USB CDC serial: every measurement as a packet with the
+RP2040's time in microseconds, a sequence number and a CRC. The format is in
+[docs/protocol.md](docs/protocol.md). Open the port in raw mode.
 
-Example startup output:
+`tools/pellicanus_reader.py` decodes and checks it (Python 3, pyserial optional on Linux and macOS):
 
 ```text
-[OK] IAM-20680 initialised
+python3 tools/pellicanus_reader.py /dev/ttyACM0 --seconds 10
+```
+
+It prints the board's messages, then a summary per stream: rate and sample intervals on the
+board's clock, sequence gaps, CRC errors, and the board's own counters. Typical boot messages:
+
+```text
+[OK] IAM-20680HT initialised (WHO_AM_I 0xFA)
 [OK] MMC5983MA initialised
 [OK] MS5637 initialised
 [OK] SL-871 GNSS initialised
-PELLICANUS v2 ready - streaming at 100 Hz IMU / 4 Hz GNSS
+PELLICANUS 2.1.0 ready: IMU 250 Hz (1000 Hz sensor, mean of 4), protocol 1
 ```
 
-Telemetry lines contain:
+## Build and Flash on Linux
+
+With the Pico SDK (`PICO_SDK_PATH`) and `gcc-arm-none-eabi`, `libnewlib-arm-none-eabi` and
+`libusb-1.0-0-dev` installed:
 
 ```text
-PELLICANUS v2 AX:<accel_x> AY:<accel_y> AZ:<accel_z> GX:<gyro_x> GY:<gyro_y> GZ:<gyro_z> MX:<mag_x> MY:<mag_y> MZ:<mag_z> P:<pressure> T:<temperature> ALT:<altitude> LAT:<latitude> LON:<longitude> HGNSS:<gnss_altitude> SPD:<speed> HDG:<heading>
+cmake -S . -B build -G Ninja -DPICO_BOARD=pico
+cmake --build build
+picotool load -f -x build/pellicanus.uf2
 ```
 
-If the GNSS fix is not valid yet, the `LAT`, `LON`, `HGNSS`, `SPD`, and `HDG` fields are omitted.
+`picotool load -f` asks the running firmware to reboot into BOOTSEL itself, so no button is needed.
+The `picotool` the SDK builds during the build has no USB support; build a full one from its
+source (or install it) for flashing, and install its `udev/60-picotool.rules` for USB access.
 
 ## Project Structure
 
@@ -140,12 +156,20 @@ If the GNSS fix is not valid yet, the `LAT`, `LON`, `HGNSS`, `SPD`, and `HDG` fi
 |-- flash.ps1
 |-- include/
 |   |-- pellicanus.h
+|   |-- protocol.h
+|   |-- imu_stream.h
 |   |-- iam20680.h
 |   |-- mmc5983ma.h
 |   |-- ms5637.h
 |   `-- sl871_gnss.h
+|-- docs/
+|   `-- protocol.md
+|-- tools/
+|   `-- pellicanus_reader.py
 `-- src/
     |-- main.c
+    |-- protocol.c
+    |-- imu_stream.c
     |-- iam20680.c
     |-- mmc5983ma.c
     |-- ms5637.c
@@ -154,7 +178,9 @@ If the GNSS fix is not valid yet, the `LAT`, `LON`, `HGNSS`, `SPD`, and `HDG` fi
 
 ## Source Overview
 
-- `src/main.c`: System initialization, timers, sensor read loop, and serial telemetry output.
+- `src/main.c`: System initialization, the main loop and the USB output.
+- `src/imu_stream.c`: The IMU on the second core: data-ready sampling at 1 kHz, averaging, timestamps.
+- `src/protocol.c`: The binary packets and CRC; packets are dropped, never waited for, when the host does not read.
 - `src/iam20680.c`: IAM-20680 SPI driver.
 - `src/mmc5983ma.c`: MMC5983MA I2C magnetometer driver.
 - `src/ms5637.c`: MS5637 I2C barometer driver.

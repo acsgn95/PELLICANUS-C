@@ -104,16 +104,20 @@ void iam20680_convert(const int32_t sum[7], int n, iam20680_data_t *out)
 {
     const float k = 1.0f / (float)n;
 
-    /* NED frame: X→forward, Y→right, Z→down  (matches Python driver sign flips) */
-    out->accel_x =  (float)sum[0] * k * accel_scale * 9.80665f;
-    out->accel_y =  (float)sum[1] * k * accel_scale * 9.80665f;
-    out->accel_z = -(float)sum[2] * k * accel_scale * 9.80665f;
+    /* The sensor's own axes. Flipping Z alone, as before, turned the right-handed frame into a
+       mirror image of itself; the mounting is the host's to apply. */
+    const float g = 9.80665f;
+    const float rad = 0.017453292519943295f;
+    out->accel_x = (float)sum[0] * k * accel_scale * g;
+    out->accel_y = (float)sum[1] * k * accel_scale * g;
+    out->accel_z = (float)sum[2] * k * accel_scale * g;
 
-    out->gyro_x =  (float)sum[4] * k * gyro_scale;
-    out->gyro_y =  (float)sum[5] * k * gyro_scale;
-    out->gyro_z = -(float)sum[6] * k * gyro_scale;
+    out->gyro_x = (float)sum[4] * k * gyro_scale * rad;
+    out->gyro_y = (float)sum[5] * k * gyro_scale * rad;
+    out->gyro_z = (float)sum[6] * k * gyro_scale * rad;
 
-    out->temp = (float)sum[3] * k / 340.0f + 36.53f;
+    /* IAM-20680: 326.8 LSB/C, 0 at 25 C (the /340 + 36.53 used before is the MPU-6050's). */
+    out->temp = (float)sum[3] * k / 326.8f + 25.0f;
 }
 
 bool iam20680_read(iam20680_data_t *out)

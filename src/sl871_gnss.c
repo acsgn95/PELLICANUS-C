@@ -9,6 +9,12 @@ static char nmea_buf[SL871_NMEA_BUF_LEN];
 static int  nmea_pos = 0;
 
 static sl871_data_t current;
+static sl871_sentence_handler_t sentence_handler;
+
+void sl871_set_sentence_handler(sl871_sentence_handler_t handler)
+{
+    sentence_handler = handler;
+}
 
 /* Convert NMEA ddmm.mmmm to decimal degrees */
 static double nmea_to_deg(const char *s, char dir)
@@ -99,6 +105,8 @@ bool sl871_update(sl871_data_t *out)
         if (c == '\n') {
             nmea_buf[nmea_pos] = '\0';
             if (nmea_pos > 0 && nmea_buf[0] == '$') {
+                if (sentence_handler)
+                    sentence_handler(nmea_buf, nmea_pos);
                 process_sentence(nmea_buf);
                 got_sentence = true;
             }

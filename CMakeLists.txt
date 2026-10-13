@@ -15,6 +15,7 @@ add_executable(pellicanus
     src/ms5637.c
     src/sl871_gnss.c
     src/imu_stream.c
+    src/protocol.c
 )
 
 target_include_directories(pellicanus PRIVATE include)
@@ -27,6 +28,13 @@ target_link_libraries(pellicanus
     hardware_uart
     hardware_gpio
     hardware_timer
+)
+
+# The USB output is the binary protocol (docs/protocol.md). The CDC transmit buffer is raised from
+# 64 bytes so that whole packets fit, and the USB stack never waits more than 1 ms for the host.
+target_compile_definitions(pellicanus PRIVATE
+    CFG_TUD_CDC_TX_BUFSIZE=1024
+    PICO_STDIO_USB_STDOUT_TIMEOUT_US=1000
 )
 
 pico_enable_stdio_usb(pellicanus 1)
