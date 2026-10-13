@@ -43,7 +43,9 @@
 #define IAM20680_REG_PWR_MGMT_2          0x6C
 #define IAM20680_REG_WHO_AM_I            0x75
 
-#define IAM20680_WHO_AM_I_VAL   0xA9
+#define IAM20680_WHO_AM_I_VAL   0xA9   /* IAM-20680 */
+#define IAM20680HP_WHO_AM_I_VAL 0xF8   /* IAM-20680HP */
+#define IAM20680HT_WHO_AM_I_VAL 0xFA   /* IAM-20680HT (automotive, high temperature) */
 
 /* Accel full-scale range */
 typedef enum {
@@ -72,5 +74,7 @@ bool iam20680_read(iam20680_data_t *out);
 
 /* The WHO_AM_I value read by the last iam20680_init(), for diagnostics. */
 uint8_t iam20680_who_am_i(void);
+/* The part found by the last iam20680_init() ("IAM-20680HT"), or "unknown". */
+const char *iam20680_part(void);
 
 #endif /* IAM20680_H */

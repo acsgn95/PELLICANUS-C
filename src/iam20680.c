@@ -54,8 +54,9 @@ bool iam20680_init(iam20680_accel_fs_t accel_fs, iam20680_gyro_fs_t gyro_fs)
     cs_high();
     sleep_ms(10);
 
+    /* The IAM-20680 family shares the register map; each part answers its own WHO_AM_I. */
     who_am_i = spi_read_reg(IAM20680_REG_WHO_AM_I);
-    if (who_am_i != IAM20680_WHO_AM_I_VAL)
+    if (strcmp(iam20680_part(), "unknown") == 0)
         return false;
 
     /* Full device reset */
@@ -121,4 +122,14 @@ bool iam20680_read(iam20680_data_t *out)
 uint8_t iam20680_who_am_i(void)
 {
     return who_am_i;
+}
+
+const char *iam20680_part(void)
+{
+    switch (who_am_i) {
+        case IAM20680_WHO_AM_I_VAL:   return "IAM-20680";
+        case IAM20680HP_WHO_AM_I_VAL: return "IAM-20680HP";
+        case IAM20680HT_WHO_AM_I_VAL: return "IAM-20680HT";
+        default:                      return "unknown";
+    }
 }
