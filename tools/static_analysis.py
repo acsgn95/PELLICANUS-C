@@ -7,6 +7,7 @@ and the IMU's Allan deviation (white noise and bias instability), barometer and 
 Record with the board on a steady surface, untouched, for 30 minutes or more: the bias instability
 shows at averaging times of minutes. Needs numpy and pandas, and matplotlib for --plot.
 """
+import os
 import sys
 
 import numpy as np
@@ -100,6 +101,7 @@ if "--plot" in sys.argv:
     import matplotlib.pyplot as plt
 
     out = sys.argv[sys.argv.index("--plot") + 1]
+    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     t0 = imu.time_us.iloc[0]
     minutes = lambda df: (df.time_us - t0) / 60e6
 

@@ -154,6 +154,7 @@ def main() -> None:
     files = {}
     if "--save" in sys.argv:
         prefix = sys.argv[sys.argv.index("--save") + 1]
+        os.makedirs(os.path.dirname(os.path.abspath(prefix)), exist_ok=True)
         headers = {
             "IMU": "seq,time_us,ax_m_s2,ay_m_s2,az_m_s2,gx_rad_s,gy_rad_s,gz_rad_s,temp_c",
             "MAG": "seq,time_us,x_gauss,y_gauss,z_gauss",
