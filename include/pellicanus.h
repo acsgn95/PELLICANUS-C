@@ -24,7 +24,7 @@
 #define PELLICANUS_PIN_TIMEPULSE  5   /* D4, input only */
 
 /* Reported in every STATUS packet. */
-#define PELLICANUS_FIRMWARE_VERSION "2.1.0"
+#define PELLICANUS_FIRMWARE_VERSION "2.1.1"
 
 /* IMU full-scale ranges. A vehicle's vibration and manoeuvres clip +-2 g and +-500 deg/s; the
  * widest ranges cost resolution the sensor's noise already hides. */

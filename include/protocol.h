@@ -78,6 +78,9 @@ bool protocol_send(protocol_type_t type, uint32_t seq, uint64_t time_us, const v
 /* Packets dropped so far. */
 uint32_t protocol_dropped(void);
 
+/* When a packet last went out (time_us_64), 0 before the first. */
+uint64_t protocol_last_sent_us(void);
+
 uint16_t protocol_crc16(const uint8_t *data, size_t length);
 
 #endif /* PROTOCOL_H */

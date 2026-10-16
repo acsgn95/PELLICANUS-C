@@ -28,6 +28,7 @@ target_link_libraries(pellicanus
     hardware_uart
     hardware_gpio
     hardware_timer
+    hardware_watchdog
 )
 
 # The USB output is the binary protocol (docs/protocol.md). The CDC transmit buffer is raised from

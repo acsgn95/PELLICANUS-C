@@ -5,6 +5,7 @@
 #include "pico/stdio_usb.h"
 #include "hardware/i2c.h"
 #include "hardware/timer.h"
+#include "hardware/watchdog.h"
 #include "pellicanus.h"
 #include "imu_stream.h"
 #include "protocol.h"
@@ -107,11 +108,30 @@ static void send_status(void)
 }
 
 /* ------------------------------------------------------------------ */
+/*  The watchdog                                                        */
+/* ------------------------------------------------------------------ */
+/* The board restarts itself when it stops working, rather than staying connected and silent:
+   USB is serviced by an interrupt, so a main loop stuck in a driver (an I2C transfer waiting on
+   a held bus has no timeout) still enumerates and opens, and sends nothing, until someone
+   unplugs it. The main loop feeds the watchdog on every pass, and stops feeding it when core 1
+   has produced no IMU sample for a while; either way the board restarts and enumerates again,
+   and a host that looks for the board again finds it. It also stops feeding it when a host has
+   the port open and no packet has gone out for two seconds: the board was seen running and
+   connected while nothing reached the host until it was unplugged. */
+#define WATCHDOG_START_MS 8000        /* during start-up: the USB wait and the sensors' init */
+#define WATCHDOG_RUN_MS 1000          /* the main loop passes every few hundred microseconds */
+#define WATCHDOG_IMU_STALL_US 1000000 /* 250 samples a second: a second without one is a stall */
+/* A host has the port open, yet nothing has gone out for this long: the USB side is stuck. */
+#define WATCHDOG_USB_STALL_US 2000000
+
+/* ------------------------------------------------------------------ */
 /*  main                                                                */
 /* ------------------------------------------------------------------ */
 int main(void)
 {
     stdio_init_all();
+    const bool watchdog_restart = watchdog_caused_reboot();
+    watchdog_enable(WATCHDOG_START_MS, true);
     sleep_ms(2000);   /* wait for USB CDC enumeration */
 
     gpio_init(PELLICANUS_PIN_LED_HEALTH);
@@ -149,6 +169,9 @@ int main(void)
     /* Solid until the loop starts: the LED's state is set once a second from the board's health. */
     led_update();
 
+    if (watchdog_restart)
+        send_text("[WARN] restarted by the watchdog: the main loop or the IMU stream had stopped");
+
     if (imu_ok)
         imu_stream_start();
 
@@ -160,7 +183,22 @@ int main(void)
     uint32_t lost_before = 0, usb_dropped_before = 0;
     const bool sensors_all = (sensors_ok == (STATUS_SENSOR_IMU | STATUS_SENSOR_MAG | STATUS_SENSOR_BARO));
     uint32_t gnss_overflow = 0;
+    uint32_t imu_produced = imu_stream_produced();
+    uint64_t imu_last_us = time_us_64();
+    watchdog_enable(WATCHDOG_RUN_MS, true);
     while (true) {
+        const uint64_t now_us = time_us_64();
+        if (imu_stream_produced() != imu_produced) {
+            imu_produced = imu_stream_produced();
+            imu_last_us = now_us;
+        }
+        const bool imu_running = !imu_ok || now_us - imu_last_us < WATCHDOG_IMU_STALL_US;
+        const uint64_t last_sent_us = protocol_last_sent_us();
+        const bool usb_running = !stdio_usb_connected() || last_sent_us == 0 ||
+                                 now_us - last_sent_us < WATCHDOG_USB_STALL_US;
+        if (imu_running && usb_running)
+            watchdog_update();
+
         imu_stream_sample_t s;
         while (imu_stream_pop(&s)) {
             const imu_payload_t p = {

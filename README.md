@@ -67,6 +67,17 @@ D2:
 
 GPIO5 is only ever an input: it shares D4's net with the receiver's TIMEPULSE output.
 
+### Watchdog
+
+The board restarts itself when it stops working instead of staying connected and silent: the
+main loop feeds the RP2040's watchdog on every pass (1 s), and stops feeding it when no IMU sample
+has come from core 1 for a second, or when a host has the port open and no packet has gone out for
+two seconds. After such a restart the board enumerates again, sends
+`[WARN] restarted by the watchdog` as a TEXT packet, and streams again; a host that looks for the
+board again picks it up with a gap of a few seconds. USB is serviced by an interrupt, so without
+this a main loop stuck in a driver (an I2C transfer on a held bus has no timeout) left the board
+enumerated, its port opening, and nothing sent until it was unplugged.
+
 ## Requirements
 
 - Raspberry Pi Pico SDK

@@ -7,6 +7,7 @@
 #include "tusb.h"
 
 static uint32_t dropped;
+static uint64_t last_sent_us;
 
 uint16_t protocol_crc16(const uint8_t *data, size_t length)
 {
@@ -48,7 +49,13 @@ bool protocol_send(protocol_type_t type, uint32_t seq, uint64_t time_us, const v
         return false;
     }
     stdio_put_string((const char *)packet, (int)total, false, false);
+    last_sent_us = time_us_64();
     return true;
+}
+
+uint64_t protocol_last_sent_us(void)
+{
+    return last_sent_us;
 }
 
 uint32_t protocol_dropped(void)
